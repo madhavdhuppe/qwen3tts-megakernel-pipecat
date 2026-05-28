@@ -1,4 +1,4 @@
-"""Demo entry point for fake-local and real RTX 5090 TTS streaming."""
+"""Demo entry point for RTX 5090 megakernel TTS streaming."""
 
 from __future__ import annotations
 
@@ -46,9 +46,9 @@ async def run_demo(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Qwen3-TTS megakernel demo")
-    parser.add_argument("--mode", default=None, help="fake, hf, or real")
+    parser.add_argument("--mode", default="real", help="hf or real")
     parser.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
-    parser.add_argument("--text", default="Hello from the fake local TTS path.")
+    parser.add_argument("--text", default="Hello from the Qwen3-TTS megakernel.")
     parser.add_argument("--output", default="output/qwen3tts_megakernel_demo.wav")
     parser.add_argument("--chunk-ms", type=int, default=80)
     parser.add_argument("--realtime", action="store_true")

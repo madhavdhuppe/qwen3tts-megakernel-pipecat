@@ -16,7 +16,7 @@ class TTSRequest(BaseModel):
     text: str = Field(..., min_length=1)
     mode: Optional[str] = Field(
         default=None,
-        description="Override decoder mode: fake, hf, or real.",
+        description="Override decoder mode: hf or real.",
     )
     model_path: str = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
     sample_rate: int = 24000

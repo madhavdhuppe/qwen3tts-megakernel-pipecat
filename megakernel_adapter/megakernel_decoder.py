@@ -12,9 +12,8 @@ from .tts_engine import MegakernelTTSEngine, TTSConfig
 class MegakernelDecoder:
     """Streaming TTS decoder backed by the adapted CUDA megakernel.
 
-    This path is intended for the rented RTX 5090 environment. Local
-    development should use ``MEGAKERNEL_TTS_MODE=fake`` so imports and server
-    tests do not compile CUDA or download model weights.
+    This path is intended for the rented RTX 5090 environment with
+    ``MEGAKERNEL_TTS_MODE=real``. Use ``MEGAKERNEL_TTS_MODE=hf`` for reference runs.
     """
 
     def __init__(
@@ -60,8 +59,7 @@ class MegakernelDecoder:
     def step(self, *_args, **_kwargs):
         raise NotImplementedError(
             "MegakernelDecoder is a TTS streaming bridge. Use stream_audio() "
-            "or synthesize(); token-level step() is only available on the fake "
-            "local decoder for scaffold smoke tests."
+            "or synthesize(); token-level step() is not supported here."
         )
 
 
