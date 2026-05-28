@@ -205,7 +205,7 @@ async def run_text_only_pipeline(args):
 
         if audio_chunks:
             full_audio = np.concatenate(audio_chunks)
-            output_path = f"/tmp/voice_agent_output.wav"
+            output_path = f"output/voice_agent_output.wav"
             sf.write(output_path, full_audio, 24000)
             duration = len(full_audio) / 24000
             print(f"  Saved: {output_path} ({duration:.2f}s)")

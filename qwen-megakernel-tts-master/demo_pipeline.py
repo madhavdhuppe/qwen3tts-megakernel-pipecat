@@ -7,7 +7,7 @@ Demonstrates the full pipeline:
 Usage:
     python demo_pipeline.py
     python demo_pipeline.py --text "Hello world"
-    python demo_pipeline.py --output /tmp/demo.wav
+    python demo_pipeline.py --output output/demo.wav
 """
 
 import argparse
@@ -83,7 +83,7 @@ async def run_streaming_demo(text, output_path, chunk_frames=10):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Megakernel TTS Demo")
     parser.add_argument("--text", default="Hello, this is a test of the megakernel text to speech engine.")
-    parser.add_argument("--output", default="/tmp/tts_demo.wav")
+    parser.add_argument("--output", default="output/tts_demo.wav")
     parser.add_argument("--chunk-frames", type=int, default=10)
     args = parser.parse_args()
 
