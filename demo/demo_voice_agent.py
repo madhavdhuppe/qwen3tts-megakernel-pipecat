@@ -59,6 +59,8 @@ def _load_websocket_transport_classes():
 
 async def run_voice_pipeline(args):
     """Run the full STT → LLM → TTS voice agent pipeline."""
+    os.environ["MEGAKERNEL_TTS_USE_PIPECAT"] = "1"
+
     from pipecat.audio.vad.silero import SileroVADAnalyzer
     from pipecat.frames.frames import LLMRunFrame
     from pipecat.pipeline.pipeline import Pipeline
@@ -72,9 +74,9 @@ async def run_voice_pipeline(args):
     from pipecat.services.deepgram.stt import DeepgramSTTService
     from pipecat.services.openai.llm import OpenAILLMService
 
-    from pipecat_service.tts_service import MegakernelTTSService
-
     _configure_gpu()
+
+    from pipecat_service.tts_service import MegakernelTTSService
 
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
     llm = OpenAILLMService(

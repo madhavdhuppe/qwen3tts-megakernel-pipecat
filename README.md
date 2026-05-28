@@ -51,7 +51,8 @@ from pipecat_service.tts_service import MegakernelTTSService
 tts = MegakernelTTSService(mode="real")
 ```
 
-Set `MEGAKERNEL_TTS_USE_PIPECAT=1` inside a full Pipecat pipeline.
+`MegakernelTTSService` auto-detects Pipecat when it is installed. Set
+`MEGAKERNEL_TTS_USE_PIPECAT=0` only when you need the lightweight local shim.
 
 Optional HF reference: `MEGAKERNEL_TTS_MODE=hf`
 

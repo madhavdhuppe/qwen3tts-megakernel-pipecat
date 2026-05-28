@@ -12,7 +12,8 @@ from megakernel_adapter.megakernel_decoder import MegakernelDecoder
 
 logger = logging.getLogger(__name__)
 
-_USE_REAL_PIPECAT = os.getenv("MEGAKERNEL_TTS_USE_PIPECAT", "0").strip().lower() in {
+_PIPECAT_FLAG = os.getenv("MEGAKERNEL_TTS_USE_PIPECAT")
+_USE_REAL_PIPECAT = _PIPECAT_FLAG is None or _PIPECAT_FLAG.strip().lower() in {
     "1",
     "true",
     "yes",
@@ -73,14 +74,20 @@ if _USE_REAL_PIPECAT:
             TTSStartedFrame,
             TTSStoppedFrame,
         )
+        from pipecat.services.tts_service import TTSService  # type: ignore
     except ImportError:
-        from pipecat.frames.frames import AudioRawFrame as TTSAudioRawFrame  # type: ignore
-        from pipecat.frames.frames import ErrorFrame, Frame  # type: ignore
+        try:
+            from pipecat.frames.frames import AudioRawFrame as TTSAudioRawFrame  # type: ignore
+            from pipecat.frames.frames import ErrorFrame, Frame  # type: ignore
 
-        TTSStartedFrame = None
-        TTSStoppedFrame = None
+            TTSStartedFrame = None
+            TTSStoppedFrame = None
 
-    from pipecat.services.tts_service import TTSService  # type: ignore
+            from pipecat.services.ai_services import TTSService  # type: ignore
+        except Exception:
+            logger.debug("Pipecat is unavailable; using local TTS service shim.", exc_info=True)
+    except Exception:
+        logger.debug("Pipecat is unavailable; using local TTS service shim.", exc_info=True)
 
 
 def _mode() -> str:
