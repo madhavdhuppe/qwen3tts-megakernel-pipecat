@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Qwen3 TTS Voice Agent</title>
+    <style>
+      :root {
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #162033;
+        background: #f4f7fb;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+      }
+
+      main {
+        width: min(720px, calc(100vw - 32px));
+        display: grid;
+        gap: 16px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+        line-height: 1.15;
+      }
+
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      input {
+        flex: 1 1 280px;
+        min-width: 0;
+        border: 1px solid #c7d0df;
+        border-radius: 6px;
+        padding: 11px 12px;
+        font: inherit;
+        color: inherit;
+        background: #fff;
+      }
+
+      button {
+        border: 0;
+        border-radius: 6px;
+        padding: 12px 16px;
+        font: inherit;
+        font-weight: 700;
+        color: #fff;
+        background: #155dfc;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        color: #162033;
+        background: #dde5f1;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .status {
+        display: grid;
+        gap: 8px;
+        padding: 12px;
+        border: 1px solid #c7d0df;
+        border-radius: 6px;
+        background: #fff;
+      }
+
+      .meter {
+        height: 12px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #dfe6f2;
+      }
+
+      #level {
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: #15a46b;
+        transition: width 80ms linear;
+      }
+
+      #log {
+        height: 220px;
+        overflow: auto;
+        margin: 0;
+        padding: 12px;
+        border: 1px solid #c7d0df;
+        border-radius: 6px;
+        background: #fff;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Qwen3 TTS Voice Agent</h1>
+
+      <div class="row">
+        <input id="wsUrl" value="ws://localhost:8006" aria-label="WebSocket URL" />
+        <button id="connect">Connect Mic</button>
+        <button id="disconnect" class="secondary" disabled>Disconnect</button>
+      </div>
+
+      <section class="status" aria-live="polite">
+        <strong id="status">Disconnected</strong>
+        <div class="meter" aria-label="Microphone level">
+          <div id="level"></div>
+        </div>
+      </section>
+
+      <pre id="log"></pre>
+    </main>
+
+    <script type="module">
+      import { PipecatClient } from "https://cdn.jsdelivr.net/npm/@pipecat-ai/client-js@1.3.0/+esm";
+      import { WebSocketTransport } from "https://cdn.jsdelivr.net/npm/@pipecat-ai/websocket-transport@1.3.0/+esm";
+
+      const connectButton = document.getElementById("connect");
+      const disconnectButton = document.getElementById("disconnect");
+      const statusEl = document.getElementById("status");
+      const levelEl = document.getElementById("level");
+      const logEl = document.getElementById("log");
+      const wsUrlEl = document.getElementById("wsUrl");
+
+      let client;
+      let micStream;
+      let audioContext;
+      let meterFrame;
+
+      function log(message) {
+        logEl.textContent += `${new Date().toLocaleTimeString()}  ${message}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setConnected(isConnected) {
+        statusEl.textContent = isConnected ? "Connected. Speak into your microphone." : "Disconnected";
+        connectButton.disabled = isConnected;
+        disconnectButton.disabled = !isConnected;
+      }
+
+      async function startMicMeter() {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+          video: false,
+        });
+
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(micStream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+
+        const samples = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          analyser.getByteTimeDomainData(samples);
+          let peak = 0;
+          for (const sample of samples) {
+            peak = Math.max(peak, Math.abs(sample - 128));
+          }
+          levelEl.style.width = `${Math.min(100, peak * 2)}%`;
+          meterFrame = requestAnimationFrame(tick);
+        };
+        tick();
+      }
+
+      function stopMicMeter() {
+        if (meterFrame) {
+          cancelAnimationFrame(meterFrame);
+        }
+        meterFrame = undefined;
+        levelEl.style.width = "0%";
+        micStream?.getTracks().forEach((track) => track.stop());
+        micStream = undefined;
+        audioContext?.close();
+        audioContext = undefined;
+      }
+
+      connectButton.addEventListener("click", async () => {
+        try {
+          statusEl.textContent = "Requesting microphone...";
+          await startMicMeter();
+
+          statusEl.textContent = "Connecting...";
+          client = new PipecatClient({
+            transport: new WebSocketTransport({
+              recorderSampleRate: 16000,
+              playerSampleRate: 24000,
+            }),
+            enableCam: false,
+            enableMic: true,
+          });
+
+          await client.connect({ ws_url: wsUrlEl.value.trim() });
+          setConnected(true);
+          log(`connected to ${wsUrlEl.value.trim()}`);
+        } catch (error) {
+          stopMicMeter();
+          setConnected(false);
+          log(`connect failed: ${error?.message || error}`);
+          console.error(error);
+        }
+      });
+
+      disconnectButton.addEventListener("click", async () => {
+        try {
+          await client?.disconnect();
+        } finally {
+          stopMicMeter();
+          setConnected(false);
+          log("disconnected");
+        }
+      });
+    </script>
+  </body>
+</html>

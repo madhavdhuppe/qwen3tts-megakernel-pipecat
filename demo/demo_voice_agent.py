@@ -12,6 +12,8 @@ import asyncio
 import logging
 import os
 import sys
+import wave
+from datetime import datetime
 from pathlib import Path
 from pipecat.transports.websocket.server import (
     WebsocketServerParams,
@@ -21,6 +23,46 @@ from pipecat.transports.websocket.server import (
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 logger = logging.getLogger(__name__)
+
+
+class WavAudioRecorder:
+    """Writes Pipecat AudioRawFrame chunks to a single PCM16 WAV file."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self._wav = None
+        self._sample_rate = None
+        self._num_channels = None
+
+    def write_frame(self, frame) -> None:
+        sample_rate = int(getattr(frame, "sample_rate"))
+        num_channels = int(getattr(frame, "num_channels", 1))
+
+        if self._wav is None:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self._sample_rate = sample_rate
+            self._num_channels = num_channels
+            self._wav = wave.open(str(self.path), "wb")
+            self._wav.setnchannels(num_channels)
+            self._wav.setsampwidth(2)
+            self._wav.setframerate(sample_rate)
+            logger.info("Recording audio to %s", self.path)
+        elif sample_rate != self._sample_rate or num_channels != self._num_channels:
+            logger.warning(
+                "Skipping audio frame with changed format: %s Hz/%s ch for %s",
+                sample_rate,
+                num_channels,
+                self.path,
+            )
+            return
+
+        self._wav.writeframes(getattr(frame, "audio"))
+
+    def close(self) -> None:
+        if self._wav is not None:
+            self._wav.close()
+            self._wav = None
+            logger.info("Saved recording to %s", self.path)
 
 
 def _configure_gpu() -> str:
@@ -62,21 +104,38 @@ async def run_voice_pipeline(args):
     os.environ["MEGAKERNEL_TTS_USE_PIPECAT"] = "1"
 
     from pipecat.audio.vad.silero import SileroVADAnalyzer
-    from pipecat.frames.frames import LLMRunFrame
+    from pipecat.frames.frames import AudioRawFrame, LLMRunFrame
     from pipecat.pipeline.pipeline import Pipeline
     from pipecat.pipeline.runner import PipelineRunner
     from pipecat.pipeline.task import PipelineParams, PipelineTask
+    from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
     from pipecat.processors.aggregators.llm_context import LLMContext
     from pipecat.processors.aggregators.llm_response_universal import (
         LLMContextAggregatorPair,
         LLMUserAggregatorParams,
     )
+    from pipecat.serializers.protobuf import ProtobufFrameSerializer
     from pipecat.services.deepgram.stt import DeepgramSTTService
     from pipecat.services.openai.llm import OpenAILLMService
 
     _configure_gpu()
 
     from pipecat_service.tts_service import MegakernelTTSService
+
+    class AudioRecordingProcessor(FrameProcessor):
+        def __init__(self, recorder: WavAudioRecorder, **kwargs):
+            super().__init__(**kwargs)
+            self._recorder = recorder
+
+        async def process_frame(self, frame, direction: FrameDirection):
+            await super().process_frame(frame, direction)
+            if direction == FrameDirection.DOWNSTREAM and isinstance(frame, AudioRawFrame):
+                self._recorder.write_frame(frame)
+            await self.push_frame(frame, direction)
+
+        async def cleanup(self):
+            self._recorder.close()
+            await super().cleanup()
 
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
     llm = OpenAILLMService(
@@ -108,6 +167,16 @@ async def run_voice_pipeline(args):
         user_params=LLMUserAggregatorParams(vad_analyzer=SileroVADAnalyzer()),
     )
 
+    session_id = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    record_dir = Path(args.record_dir)
+    user_audio_recorder = WavAudioRecorder(record_dir / f"{session_id}_user_mic.wav")
+    assistant_audio_recorder = WavAudioRecorder(record_dir / f"{session_id}_assistant_tts.wav")
+    user_audio_tap = AudioRecordingProcessor(user_audio_recorder, name="UserMicRecorder")
+    assistant_audio_tap = AudioRecordingProcessor(
+        assistant_audio_recorder,
+        name="AssistantTTSRecorder",
+    )
+
     if args.transport == "websocket":
         transport = WebsocketServerTransport(
         host=args.host,
@@ -115,7 +184,9 @@ async def run_voice_pipeline(args):
         params=WebsocketServerParams(
             audio_out_enabled=True,
             audio_in_enabled=True,
+            audio_in_sample_rate=16000,
             audio_out_sample_rate=24000,
+            serializer=ProtobufFrameSerializer(),
         ),
     )
     elif args.transport == "daily":
@@ -137,10 +208,12 @@ async def run_voice_pipeline(args):
     pipeline = Pipeline(
         [
             transport.input(),
+            user_audio_tap,
             stt,
             user_aggregator,
             llm,
             tts,
+            assistant_audio_tap,
             transport.output(),
             assistant_aggregator,
         ]
@@ -168,6 +241,8 @@ async def run_voice_pipeline(args):
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(transport, client):
         logger.info("Client disconnected")
+        user_audio_recorder.close()
+        assistant_audio_recorder.close()
         await task.cancel()
 
     runner = PipelineRunner()
@@ -243,6 +318,11 @@ def main():
     )
     parser.add_argument("--host", default="0.0.0.0", help="WebSocket host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
+    parser.add_argument(
+        "--record-dir",
+        default="output/voice_agent_recordings",
+        help="Directory for live voice-agent WAV recordings",
+    )
     parser.add_argument(
         "--text-only",
         action="store_true",
