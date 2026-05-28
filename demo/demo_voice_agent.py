@@ -19,6 +19,40 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 logger = logging.getLogger(__name__)
 
 
+def _configure_gpu() -> str:
+    import torch
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for the RTX 5090 megakernel demo.")
+
+    torch.cuda.set_device(0)
+    torch.cuda.empty_cache()
+    gpu_name = torch.cuda.get_device_name(0)
+    logger.info("GPU detected: %s", gpu_name)
+    if "RTX 5090" not in gpu_name:
+        logger.warning(
+            "Expected an RTX 5090 for real megakernel mode, but detected %s. "
+            "Performance and compatibility may differ.",
+            gpu_name,
+        )
+    os.environ.setdefault("MEGAKERNEL_TTS_MODE", "real")
+    return gpu_name
+
+
+def _load_websocket_transport_classes():
+    try:
+        from pipecat.transports.websocket.fastapi import (
+            FastAPIWebsocketParams,
+            FastAPIWebsocketTransport,
+        )
+    except ImportError:
+        from pipecat.transports.network.fastapi_websocket import (  # type: ignore
+            FastAPIWebsocketParams,
+            FastAPIWebsocketTransport,
+        )
+    return FastAPIWebsocketParams, FastAPIWebsocketTransport
+
+
 async def run_voice_pipeline(args):
     """Run the full STT → LLM → TTS voice agent pipeline."""
     from pipecat.audio.vad.silero import SileroVADAnalyzer
@@ -36,6 +70,8 @@ async def run_voice_pipeline(args):
 
     from pipecat_service.tts_service import MegakernelTTSService
 
+    _configure_gpu()
+
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
@@ -43,8 +79,12 @@ async def run_voice_pipeline(args):
     )
     tts = MegakernelTTSService(
         model_path="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+        mode="real",
+        device="cuda",
         chunk_frames=10,
     )
+    tts.decoder.initialize()
+    logger.info("Megakernel decoder initialized on GPU.")
 
     messages = [
         {
@@ -63,10 +103,7 @@ async def run_voice_pipeline(args):
     )
 
     if args.transport == "websocket":
-        from pipecat.transports.websocket.fastapi import (
-            FastAPIWebsocketParams,
-            FastAPIWebsocketTransport,
-        )
+        FastAPIWebsocketParams, FastAPIWebsocketTransport = _load_websocket_transport_classes()
 
         transport = FastAPIWebsocketTransport(
             params=FastAPIWebsocketParams(
@@ -74,8 +111,6 @@ async def run_voice_pipeline(args):
                 audio_out_enabled=True,
                 audio_out_sample_rate=24000,
             ),
-            host=args.host,
-            port=args.port,
         )
     elif args.transport == "daily":
         from pipecat.transports.daily.transport import DailyParams, DailyTransport
@@ -143,10 +178,16 @@ async def run_text_only_pipeline(args):
 
     from pipecat_service.tts_service import MegakernelTTSService
 
+    _configure_gpu()
+
     tts = MegakernelTTSService(
         model_path="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+        mode="real",
+        device="cuda",
         chunk_frames=10,
     )
+    tts.decoder.initialize()
+    logger.info("Megakernel decoder initialized on GPU.")
 
     print("=" * 60)
     print("MEGAKERNEL TTS — TEXT-ONLY PIPECAT MODE")
