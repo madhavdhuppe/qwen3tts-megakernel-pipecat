@@ -1,9 +1,0 @@
-torch>=2.7.0
-transformers>=4.40.0
-safetensors
-ninja
-numpy
-soundfile
-huggingface_hub
-pipecat-ai
-qwen-tts
