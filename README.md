@@ -11,7 +11,7 @@ This repo keeps the assignment split into two modes:
 python demo/test_adapter.py
 python demo/test_fake_decoder.py
 python demo/test_fake_audio.py
-python demo/demo.py --mode fake --output /tmp/fake_qwen3tts.wav
+python demo/demo.py --mode fake --output output/fake_qwen3tts.wav
 python benchmark/benchmark.py --mode fake --runs 3
 uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
@@ -22,7 +22,7 @@ Streaming smoke test:
 curl -N -X POST http://127.0.0.1:8000/tts/stream \
   -H "content-type: application/json" \
   -d '{"text":"hello from fake local mode","mode":"fake"}' \
-  --output /tmp/fake_qwen3tts.pcm
+  --output output/fake_qwen3tts.pcm
 ```
 
 ## RTX 5090 Real Run
@@ -31,7 +31,7 @@ Use this only on a CUDA 12.8+ Blackwell machine with PyTorch CUDA support:
 
 ```bash
 export MEGAKERNEL_TTS_MODE=real
-python demo/demo.py --mode real --output /tmp/qwen3tts_megakernel.wav
+python demo/demo.py --mode real --output output/qwen3tts_megakernel.wav
 python benchmark/benchmark.py --mode real --runs 5
 uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
