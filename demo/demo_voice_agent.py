@@ -104,7 +104,7 @@ async def run_voice_pipeline(args):
     os.environ["MEGAKERNEL_TTS_USE_PIPECAT"] = "1"
 
     from pipecat.audio.vad.silero import SileroVADAnalyzer
-    from pipecat.frames.frames import AudioRawFrame, LLMRunFrame
+    from pipecat.frames.frames import LLMRunFrame
     from pipecat.pipeline.pipeline import Pipeline
     from pipecat.pipeline.runner import PipelineRunner
     from pipecat.pipeline.task import PipelineParams, PipelineTask
@@ -129,7 +129,11 @@ async def run_voice_pipeline(args):
 
         async def process_frame(self, frame, direction: FrameDirection):
             await super().process_frame(frame, direction)
-            if direction == FrameDirection.DOWNSTREAM and isinstance(frame, AudioRawFrame):
+            if (
+                direction == FrameDirection.DOWNSTREAM
+                and hasattr(frame, "audio")
+                and hasattr(frame, "sample_rate")
+            ):
                 self._recorder.write_frame(frame)
             await self.push_frame(frame, direction)
 
