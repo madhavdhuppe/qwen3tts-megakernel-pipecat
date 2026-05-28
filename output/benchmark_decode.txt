@@ -1,0 +1,13 @@
+gpu=NVIDIA GeForce RTX 5090
+Loading weights and JIT-compiling megakernel (first run is slow)...
+Loading TTS weights from Qwen/Qwen3-TTS-12Hz-0.6B-Base...
+Loaded 478 tensors (914.6M params)
+run=1 talker_decode_tok_s=307.3
+run=2 talker_decode_tok_s=306.9
+run=3 talker_decode_tok_s=307.1
+run=4 talker_decode_tok_s=307.1
+run=5 talker_decode_tok_s=305.0
+--------------------------------------------------------
+avg_talker_decode_tok_s=306.7
+median_talker_decode_tok_s=307.1
+note=Measures talker.step_with_embed() only (28-layer megakernel + 3072 vocab LM head).
