@@ -30,7 +30,10 @@ async def run_demo(args):
             first_chunk = False
         pcm.extend(audio)
 
-    with wave.open(args.output, "wb") as wav:
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with wave.open(str(output_path), "wb") as wav:
         wav.setnchannels(1)
         wav.setsampwidth(2)
         wav.setframerate(sample_rate)
@@ -38,7 +41,7 @@ async def run_demo(args):
 
     print(f"mode={service.mode}")
     print(f"samples={len(pcm) // 2}")
-    print(f"saved={args.output}")
+    print(f"saved={output_path}")
 
 
 def main():
