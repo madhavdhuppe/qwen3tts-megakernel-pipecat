@@ -17,7 +17,12 @@ pip install -r requirements.txt
 python scripts/verify_5090_env.py
 ```
 
-See [docs/vast_ai_5090_runbook.md](docs/vast_ai_5090_runbook.md) for Vast.ai setup.
+See [docs/architecture.md](docs/architecture.md) for the system architecture and
+voice-agent execution flow.
+See [docs/options.md](docs/options.md) for all CLI flags, HTTP fields, and
+environment variables.
+See [docs/vast_ai_5090_runbook.md](docs/vast_ai_5090_runbook.md) for Vast.ai
+RTX 5090 setup.
 
 ## Run
 

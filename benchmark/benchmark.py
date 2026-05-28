@@ -73,7 +73,12 @@ async def main_async(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Qwen3-TTS megakernel benchmark")
-    parser.add_argument("--mode", default="real", help="hf or real")
+    parser.add_argument(
+        "--mode",
+        choices=["real", "megakernel", "cuda", "gpu", "hf", "reference", "hf_reference"],
+        default="real",
+        help="Decoder mode",
+    )
     parser.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
     parser.add_argument(
         "--text",
@@ -85,6 +90,11 @@ def main():
     parser.add_argument("--runs", type=int, default=3)
     parser.add_argument("--chunk-frames", type=int, default=10)
     args = parser.parse_args()
+
+    if args.runs < 1:
+        parser.error("--runs must be >= 1")
+    if args.chunk_frames < 1:
+        parser.error("--chunk-frames must be >= 1")
 
     asyncio.run(main_async(args))
 

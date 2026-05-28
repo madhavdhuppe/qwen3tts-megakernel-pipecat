@@ -44,7 +44,12 @@ async def run_demo(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Qwen3-TTS megakernel demo")
-    parser.add_argument("--mode", default="real", help="hf or real")
+    parser.add_argument(
+        "--mode",
+        choices=["real", "megakernel", "cuda", "gpu", "hf", "reference", "hf_reference"],
+        default="real",
+        help="Decoder mode",
+    )
     parser.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
     parser.add_argument("--text", default="Hello from the Qwen3-TTS megakernel.")
     parser.add_argument("--output", default="output/qwen3tts_megakernel_demo.wav")

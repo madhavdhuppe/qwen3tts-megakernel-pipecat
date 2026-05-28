@@ -65,6 +65,15 @@ def _service_from_request(request: TTSRequest) -> MegakernelTTSService:
         model_path=request.model_path,
         mode=request.mode,
         sample_rate=request.sample_rate,
+        vocoder_path=request.vocoder_path,
+        device=request.device,
+        chunk_frames=request.chunk_frames,
+        chunk_ms=request.chunk_ms,
+        do_sample=request.do_sample,
+        temperature=request.temperature,
+        top_k=request.top_k,
+        max_new_tokens=request.max_new_tokens,
+        realtime=request.realtime,
     )
 
 
