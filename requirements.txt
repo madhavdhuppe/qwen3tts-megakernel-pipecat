@@ -1,0 +1,13 @@
+torch
+transformers>=4.40.0
+accelerate==1.12.0
+fastapi
+uvicorn
+websockets
+numpy==1.26.4
+soundfile
+pipecat-ai
+safetensors
+ninja
+huggingface_hub
+qwen-tts
