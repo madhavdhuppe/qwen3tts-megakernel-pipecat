@@ -85,20 +85,6 @@ def _configure_gpu() -> str:
     return gpu_name
 
 
-def _load_websocket_transport_classes():
-    try:
-        from pipecat.transports.websocket.fastapi import (
-            FastAPIWebsocketParams,
-            FastAPIWebsocketTransport,
-        )
-    except ImportError:
-        from pipecat.transports.network.fastapi_websocket import (  # type: ignore
-            FastAPIWebsocketParams,
-            FastAPIWebsocketTransport,
-        )
-    return FastAPIWebsocketParams, FastAPIWebsocketTransport
-
-
 async def run_voice_pipeline(args):
     """Run the full STT → LLM → TTS voice agent pipeline."""
     os.environ["MEGAKERNEL_TTS_USE_PIPECAT"] = "1"
@@ -181,8 +167,7 @@ async def run_voice_pipeline(args):
         name="AssistantTTSRecorder",
     )
 
-    if args.transport == "websocket":
-        transport = WebsocketServerTransport(
+    transport = WebsocketServerTransport(
         host=args.host,
         port=args.port,
         params=WebsocketServerParams(
@@ -193,21 +178,6 @@ async def run_voice_pipeline(args):
             serializer=ProtobufFrameSerializer(),
         ),
     )
-    elif args.transport == "daily":
-        from pipecat.transports.daily.transport import DailyParams, DailyTransport
-
-        transport = DailyTransport(
-            room_url=os.getenv("DAILY_ROOM_URL", ""),
-            token=os.getenv("DAILY_TOKEN", ""),
-            bot_name="Megakernel TTS Bot",
-            params=DailyParams(
-                audio_in_enabled=True,
-                audio_out_enabled=True,
-                audio_out_sample_rate=24000,
-            ),
-        )
-    else:
-        raise ValueError(f"Unknown transport: {args.transport}")
 
     pipeline = Pipeline(
         [
@@ -250,76 +220,12 @@ async def run_voice_pipeline(args):
         await task.cancel()
 
     runner = PipelineRunner()
-    logger.info(f"Voice agent running ({args.transport} transport)")
+    logger.info("Voice agent running (websocket transport)")
     await runner.run(task)
-
-
-async def run_text_only_pipeline(args):
-    """Text-only mode: type text, hear synthesized speech via Pipecat frames."""
-    import numpy as np
-    import soundfile as sf
-
-    from pipecat.frames.frames import TTSAudioRawFrame, TTSStartedFrame, TTSStoppedFrame
-
-    from pipecat_service.tts_service import MegakernelTTSService
-
-    _configure_gpu()
-
-    tts = MegakernelTTSService(
-        model_path="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
-        mode="real",
-        device="cuda",
-        chunk_frames=10,
-    )
-    tts.decoder.initialize()
-    logger.info("Megakernel decoder initialized on GPU.")
-
-    print("=" * 60)
-    print("MEGAKERNEL TTS — TEXT-ONLY PIPECAT MODE")
-    print("=" * 60)
-    print("Type text and press Enter to synthesize speech.")
-    print("Type 'quit' to exit.\n")
-
-    while True:
-        try:
-            text = input("You: ").strip()
-        except (EOFError, KeyboardInterrupt):
-            break
-
-        if not text or text.lower() in ("quit", "exit", "q"):
-            break
-
-        print(f"Synthesizing: '{text}'")
-        audio_chunks = []
-        chunk_count = 0
-
-        async for frame in tts.run_tts(text, context_id="text-mode"):
-            if isinstance(frame, TTSStartedFrame):
-                print("  [TTS Started]")
-            elif isinstance(frame, TTSAudioRawFrame):
-                chunk_count += 1
-                audio_chunks.append(np.frombuffer(frame.audio, dtype=np.int16))
-                print(f"  Chunk {chunk_count}: {len(frame.audio)} bytes")
-            elif isinstance(frame, TTSStoppedFrame):
-                print("  [TTS Stopped]")
-
-        if audio_chunks:
-            full_audio = np.concatenate(audio_chunks)
-            output_path = "output/voice_agent_output_text.wav"
-            sf.write(output_path, full_audio, 24000)
-            duration = len(full_audio) / 24000
-            print(f"  Saved: {output_path} ({duration:.2f}s)")
-        print()
 
 
 def main():
     parser = argparse.ArgumentParser(description="Pipecat voice agent with megakernel TTS")
-    parser.add_argument(
-        "--transport",
-        choices=["websocket", "daily"],
-        default="websocket",
-        help="Transport type (default: websocket)",
-    )
     parser.add_argument("--host", default="0.0.0.0", help="WebSocket host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
     parser.add_argument(
@@ -327,18 +233,9 @@ def main():
         default="output/voice_agent_recordings",
         help="Directory for live voice-agent WAV recordings",
     )
-    parser.add_argument(
-        "--text-only",
-        action="store_true",
-        help="Text-only mode (no STT, type text → hear TTS)",
-    )
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
-
-    if args.text_only:
-        asyncio.run(run_text_only_pipeline(args))
-        return
 
     missing = []
     if not os.getenv("DEEPGRAM_API_KEY"):
@@ -350,7 +247,6 @@ def main():
         print("Set them before running the voice pipeline:")
         print("  export DEEPGRAM_API_KEY=your-key")
         print("  export OPENAI_API_KEY=your-key")
-        print("\nOr use --text-only mode to test TTS without external services.")
         sys.exit(1)
 
     asyncio.run(run_voice_pipeline(args))
