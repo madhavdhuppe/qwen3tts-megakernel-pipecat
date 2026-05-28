@@ -130,7 +130,6 @@ async def run_voice_pipeline(args):
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
-        model=args.llm_model,
     )
     tts = MegakernelTTSService(
         model_path=args.model,
