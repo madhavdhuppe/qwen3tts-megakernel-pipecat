@@ -63,7 +63,13 @@ Run the microphone-style Pipecat demo (STT → LLM → megakernel TTS → audio)
 ```bash
 export DEEPGRAM_API_KEY=your-key
 export OPENAI_API_KEY=your-key
-python demo/demo_voice_agent.py --port 8765
+python demo/demo_voice_agent.py --transport websocket --port 8765
+```
+
+For a text-only sanity check without STT/LLM dependencies:
+
+```bash
+python demo/demo_voice_agent.py --text-only
 ```
 
 ## Validation
