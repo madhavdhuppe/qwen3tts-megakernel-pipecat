@@ -130,16 +130,13 @@ async def run_voice_pipeline(args):
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
     llm = OpenAILLMService(
         api_key=os.getenv("OPENAI_API_KEY"),
+        model="gpt-4o-mini",
     )
     tts = MegakernelTTSService(
-        model_path=args.model,
+        model_path="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
         mode="real",
-        device=args.device,
-        chunk_frames=args.chunk_frames,
-        do_sample=not args.no_sample,
-        temperature=args.temperature,
-        top_k=args.top_k,
-        max_new_tokens=args.max_new_tokens,
+        device="cuda",
+        chunk_frames=10,
     )
     tts.decoder.initialize()
     logger.info("Megakernel decoder initialized on GPU.")
@@ -176,8 +173,8 @@ async def run_voice_pipeline(args):
         params=WebsocketServerParams(
             audio_out_enabled=True,
             audio_in_enabled=True,
-            audio_in_sample_rate=args.audio_in_sample_rate,
-            audio_out_sample_rate=args.audio_out_sample_rate,
+            audio_in_sample_rate=16000,
+            audio_out_sample_rate=24000,
             serializer=ProtobufFrameSerializer(),
         ),
     )
@@ -232,50 +229,11 @@ def main():
     parser.add_argument("--host", default="0.0.0.0", help="WebSocket host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
     parser.add_argument(
-        "--model",
-        default="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
-        help="Qwen3-TTS model path or Hugging Face repo",
-    )
-    parser.add_argument("--device", default="cuda", help="Torch device for the megakernel decoder")
-    parser.add_argument("--chunk-frames", type=int, default=10, help="Decoder chunk size in codec frames")
-    parser.add_argument("--llm-model", default="gpt-4o-mini", help="OpenAI chat model for the voice agent")
-    parser.add_argument(
-        "--audio-in-sample-rate",
-        type=int,
-        default=16000,
-        help="Browser microphone sample rate",
-    )
-    parser.add_argument(
-        "--audio-out-sample-rate",
-        type=int,
-        default=24000,
-        help="Assistant playback sample rate",
-    )
-    parser.add_argument("--no-sample", action="store_true", help="Disable stochastic TTS sampling")
-    parser.add_argument("--temperature", type=float, default=0.9, help="TTS sampling temperature")
-    parser.add_argument("--top-k", type=int, default=50, help="TTS top-k sampling cutoff")
-    parser.add_argument("--max-new-tokens", type=int, default=2048, help="Maximum TTS tokens to generate")
-    parser.add_argument(
         "--record-dir",
         default="output/voice_agent_recordings",
         help="Directory for live voice-agent WAV recordings",
     )
     args = parser.parse_args()
-
-    if args.port < 1:
-        parser.error("--port must be >= 1")
-    if args.chunk_frames < 1:
-        parser.error("--chunk-frames must be >= 1")
-    if args.audio_in_sample_rate < 1:
-        parser.error("--audio-in-sample-rate must be >= 1")
-    if args.audio_out_sample_rate < 1:
-        parser.error("--audio-out-sample-rate must be >= 1")
-    if args.temperature <= 0:
-        parser.error("--temperature must be > 0")
-    if args.top_k < 0:
-        parser.error("--top-k must be >= 0")
-    if args.max_new_tokens < 1:
-        parser.error("--max-new-tokens must be >= 1")
 
     logging.basicConfig(level=logging.INFO)
 

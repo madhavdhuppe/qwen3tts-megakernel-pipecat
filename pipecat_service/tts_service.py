@@ -100,11 +100,6 @@ def _mode() -> str:
 def _build_decoder(mode: str, model_path: str, *, sample_rate: int = 24000, **kwargs):
     if mode in {"hf", "reference", "hf_reference"}:
         kwargs.pop("chunk_frames", None)
-        kwargs.pop("vocoder_path", None)
-        kwargs.pop("do_sample", None)
-        kwargs.pop("temperature", None)
-        kwargs.pop("top_k", None)
-        kwargs.pop("max_new_tokens", None)
         return HFReferenceDecoder(model_path, **kwargs)
     if mode in {"real", "megakernel", "cuda", "gpu"}:
         kwargs.pop("chunk_ms", None)
