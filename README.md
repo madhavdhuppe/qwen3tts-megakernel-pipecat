@@ -55,6 +55,36 @@ Set `MEGAKERNEL_TTS_USE_PIPECAT=1` inside a full Pipecat pipeline.
 
 Optional HF reference: `MEGAKERNEL_TTS_MODE=hf`
 
+## Full voice-agent demo
+
+Run the microphone-style Pipecat demo (STT → LLM → megakernel TTS → audio):
+
+```bash
+export DEEPGRAM_API_KEY=your-key
+export OPENAI_API_KEY=your-key
+python demo/demo_voice_agent.py --transport websocket --port 8765
+```
+
+For a text-only sanity check without STT/LLM dependencies:
+
+```bash
+python demo/demo_voice_agent.py --text-only
+```
+
+## Validation
+
+Run the local round-trip validator (synthetic decoder fallback by default):
+
+```bash
+python scripts/validate_roundtrip.py --text "Hello from the round-trip validator" --output output/roundtrip_validation.wav
+```
+
+Use the real decoder when a compatible RTX 5090 runtime is available:
+
+```bash
+python scripts/validate_roundtrip.py --real --text "Hello from the real megakernel path" --output output/roundtrip_validation.wav
+```
+
 ## Kernel changes
 
 - `LDG_VOCAB_SIZE=3072` (codec vocab)
