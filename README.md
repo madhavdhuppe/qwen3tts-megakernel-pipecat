@@ -71,19 +71,6 @@ export OPENAI_API_KEY=your-key
 python demo/live_voice_agent.py --port 8765
 ```
 
-## Validation
-
-Run the local round-trip validator (synthetic decoder fallback by default):
-
-```bash
-python scripts/validate_roundtrip.py --text "Hello from the round-trip validator" --output output/roundtrip_validation.wav
-```
-
-Use the real decoder when a compatible RTX 5090 runtime is available:
-
-```bash
-python scripts/validate_roundtrip.py --real --text "Hello from the real megakernel path" --output output/roundtrip_validation.wav
-```
 
 ## Kernel changes
 
@@ -92,3 +79,11 @@ python scripts/validate_roundtrip.py --real --text "Hello from the real megakern
 - Embedding sentinel (`token_id < 0`) for precomputed inputs
 
 Details: [docs/model_comparison.md](docs/model_comparison.md)
+
+## BENCH MARK
+run=5 mode=real ttfc_ms=5376.00 rtf=0.615 chunks=18 audio_s=13.60
+--------------------------------------------------------
+avg_ttfc_ms=6316.11
+avg_rtf=0.684
+target_ttfc_ms=<60 assignment / <90 reference
+target_rtf=<0.1 assignment / <0.3 reference
