@@ -2,7 +2,7 @@
 """Full Pipecat voice agent pipeline: STT → LLM → Megakernel TTS → Audio Output.
 
 This wires our megakernel TTS into a complete Pipecat voice pipeline:
-  1. Transport receives user audio (WebSocket or Daily)
+  1. Transport receives user audio (WebSocket)
   2. Deepgram STT transcribes speech to text
   3. OpenAI LLM generates a response
   4. MegakernelTTSService converts text to streaming audio
@@ -18,9 +18,6 @@ Requirements:
 Usage:
     # WebSocket mode (connect via browser or WebSocket client):
     python demo_voice_agent.py --transport websocket --port 8765
-
-    # Daily.co mode (WebRTC, requires DAILY_API_KEY):
-    python demo_voice_agent.py --transport daily
 
     # Text-only mode (no STT needed, type text → hear TTS):
     python demo_voice_agent.py --text-only
@@ -96,22 +93,7 @@ async def run_voice_pipeline(args):
                 audio_in_enabled=True,
                 audio_out_enabled=True,
                 audio_out_sample_rate=24000,
-            ),
-            host=args.host,
-            port=args.port,
-        )
-    elif args.transport == "daily":
-        from pipecat.transports.daily.transport import DailyParams, DailyTransport
-
-        transport = DailyTransport(
-            room_url=os.getenv("DAILY_ROOM_URL", ""),
-            token=os.getenv("DAILY_TOKEN", ""),
-            bot_name="Megakernel TTS Bot",
-            params=DailyParams(
-                audio_in_enabled=True,
-                audio_out_enabled=True,
-                audio_out_sample_rate=24000,
-            ),
+            )
         )
     else:
         raise ValueError(f"Unknown transport: {args.transport}")
@@ -218,11 +200,11 @@ def main():
     )
     parser.add_argument(
         "--transport",
-        choices=["websocket", "daily"],
+        choices=["websocket"],
         default="websocket",
         help="Transport type (default: websocket)",
     )
-    parser.add_argument("--host", default="0.0.0.0", help="WebSocket host")
+    parser.add_argument("--host", default="0.0.0.5", help="WebSocket host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
     parser.add_argument(
         "--text-only",
