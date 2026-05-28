@@ -1,51 +1,64 @@
-# Qwen3-TTS Megakernel Pipecat Adapter
+# Qwen3-TTS Megakernel × Pipecat
 
-This repo keeps the assignment split into two modes:
+RTX 5090 megakernel-backed **Qwen3-TTS talker decode** with streaming audio for FastAPI and Pipecat.
 
-- `fake` mode is the default. It runs locally with deterministic PCM audio and no model downloads, CUDA build, or GPU spend.
-- `real` mode uses the adapted Qwen3-TTS megakernel path copied from the reference implementation and is intended for the rented RTX 5090 box.
+## Requirements
 
-## Local Fake Run
+- NVIDIA RTX 5090 (Blackwell, `sm_120`)
+- CUDA 12.8+, Python 3.10 or 3.11
+- ~40 GB disk for model weights
 
-```bash
-python demo/test_adapter.py
-python demo/test_fake_decoder.py
-python demo/test_fake_audio.py
-python demo/demo.py --mode fake --output output/fake_qwen3tts.wav
-python benchmark/benchmark.py --mode fake --runs 3
-uvicorn server.app:app --host 0.0.0.0 --port 8000
-```
-
-Streaming smoke test:
+## Build
 
 ```bash
-curl -N -X POST http://127.0.0.1:8000/tts/stream \
-  -H "content-type: application/json" \
-  -d '{"text":"hello from fake local mode","mode":"fake"}' \
-  --output output/fake_qwen3tts.pcm
+python3 -m venv venv && source venv/bin/activate
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+python scripts/verify_5090_env.py
 ```
 
-## RTX 5090 Real Run
+See [docs/vast_ai_5090_runbook.md](docs/vast_ai_5090_runbook.md) for Vast.ai setup.
 
-Use this only on a CUDA 12.8+ Blackwell machine with PyTorch CUDA support:
+## Run
 
 ```bash
 export MEGAKERNEL_TTS_MODE=real
-python demo/demo.py --mode real --output output/qwen3tts_megakernel.wav
-python benchmark/benchmark.py --mode real --runs 5
+
+# CLI demo → WAV
+python demo/demo.py --mode real --text "Hello" --output output/demo.wav
+
+# HTTP server
 uvicorn server.app:app --host 0.0.0.0 --port 8000
+
+# Benchmark
+python benchmark/benchmark.py --mode real --runs 5
 ```
 
-The real path adapts Qwen3-TTS by compiling the megakernel with `LDG_VOCAB_SIZE=3072`, using the TTS talker weights, and adding the embedding-sentinel flow required for precomputed text+codec embeddings.
+Query server:
 
-## Pipecat Service
+```bash
+curl http://127.0.0.1:8000/health
+curl -X POST http://127.0.0.1:8000/tts/wav \
+  -H "content-type: application/json" \
+  -d '{"text":"Hello","mode":"real"}' -o output/out.wav
+```
+
+## Pipecat
 
 ```python
 from pipecat_service.tts_service import MegakernelTTSService
 
-tts = MegakernelTTSService(mode="fake")
-# On 5090:
-# tts = MegakernelTTSService(mode="real")
+tts = MegakernelTTSService(mode="real")
 ```
 
-`run_tts()` streams start/audio/stop frames and does not buffer the full utterance before sending audio. Local tests use lightweight frame classes to avoid Pipecat import-time downloads; set `MEGAKERNEL_TTS_USE_PIPECAT=1` when running inside a real Pipecat pipeline.
+Set `MEGAKERNEL_TTS_USE_PIPECAT=1` inside a full Pipecat pipeline.
+
+Optional HF reference: `MEGAKERNEL_TTS_MODE=hf`
+
+## Kernel changes
+
+- `LDG_VOCAB_SIZE=3072` (codec vocab)
+- Untied `codec_head` LM weights
+- Embedding sentinel (`token_id < 0`) for precomputed inputs
+
+Details: [docs/model_comparison.md](docs/model_comparison.md)

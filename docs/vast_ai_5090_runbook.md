@@ -1,6 +1,6 @@
 # Vast.ai RTX 5090 Runbook
 
-Use fake mode locally. Use this runbook only after the Vast.ai instance is running.
+Use this runbook on a rented Vast.ai RTX 5090 instance.
 
 ## 1. Pick Instance
 

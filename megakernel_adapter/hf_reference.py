@@ -33,7 +33,7 @@ class HFReferenceDecoder:
         """Load the reference model lazily.
 
         The public Qwen3-TTS APIs have changed across Transformers releases, so
-        this method keeps failures explicit and isolated from the fake path.
+        this method keeps failures explicit and isolated from the megakernel path.
         """
         if self._loaded:
             return
@@ -43,8 +43,8 @@ class HFReferenceDecoder:
         except ImportError as exc:
             raise RuntimeError(
                 "HF reference mode requires a Transformers build with "
-                "Qwen3TTSForConditionalGeneration. Use fake mode locally or "
-                "real mode on the 5090 box."
+                "Qwen3TTSForConditionalGeneration. Use hf mode with a compatible "
+                "Transformers build, or real mode on the 5090 box."
             ) from exc
 
         self.processor = AutoProcessor.from_pretrained(

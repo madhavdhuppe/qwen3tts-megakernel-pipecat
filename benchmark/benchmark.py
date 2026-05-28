@@ -1,4 +1,4 @@
-"""Benchmark fake-local or real RTX 5090 Qwen3-TTS streaming."""
+"""Benchmark streaming TTS on RTX 5090 (TTFC, RTF)."""
 
 from __future__ import annotations
 
@@ -16,11 +16,9 @@ from pipecat_service.tts_service import MegakernelTTSService
 
 async def run_once(args) -> dict:
     service = MegakernelTTSService(
-        mode=args.mode,
+        mode=args.mode or "real",
         model_path=args.model,
-        chunk_ms=args.chunk_ms,
         chunk_frames=args.chunk_frames,
-        realtime=args.realtime,
     )
 
     started = time.perf_counter()
@@ -75,7 +73,7 @@ async def main_async(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Qwen3-TTS megakernel benchmark")
-    parser.add_argument("--mode", default=None, help="fake, hf, or real")
+    parser.add_argument("--mode", default="real", help="hf or real")
     parser.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
     parser.add_argument(
         "--text",
@@ -85,9 +83,7 @@ def main():
         ),
     )
     parser.add_argument("--runs", type=int, default=3)
-    parser.add_argument("--chunk-ms", type=int, default=80)
     parser.add_argument("--chunk-frames", type=int, default=10)
-    parser.add_argument("--realtime", action="store_true")
     args = parser.parse_args()
 
     asyncio.run(main_async(args))
