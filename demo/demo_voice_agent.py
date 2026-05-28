@@ -13,6 +13,10 @@ import logging
 import os
 import sys
 from pathlib import Path
+from pipecat.transports.websocket.server import (
+    WebsocketServerParams,
+    WebsocketServerTransport,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -103,15 +107,15 @@ async def run_voice_pipeline(args):
     )
 
     if args.transport == "websocket":
-        FastAPIWebsocketParams, FastAPIWebsocketTransport = _load_websocket_transport_classes()
-
-        transport = FastAPIWebsocketTransport(
-            params=FastAPIWebsocketParams(
-                audio_in_enabled=True,
-                audio_out_enabled=True,
-                audio_out_sample_rate=24000,
-            ),
-        )
+        transport = WebsocketServerTransport(
+        host=args.host,
+        port=args.port,
+        params=WebsocketServerParams(
+            audio_out_enabled=True,
+            audio_in_enabled=True,
+            audio_out_sample_rate=24000,
+        ),
+    )
     elif args.transport == "daily":
         from pipecat.transports.daily.transport import DailyParams, DailyTransport
 
@@ -220,7 +224,7 @@ async def run_text_only_pipeline(args):
 
         if audio_chunks:
             full_audio = np.concatenate(audio_chunks)
-            output_path = "/tmp/voice_agent_output.wav"
+            output_path = "output/voice_agent_output_text.wav"
             sf.write(output_path, full_audio, 24000)
             duration = len(full_audio) / 24000
             print(f"  Saved: {output_path} ({duration:.2f}s)")
