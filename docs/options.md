@@ -17,7 +17,7 @@ megakernel adapter.
 Run:
 
 ```bash
-python demo/demo_voice_agent.py --host 0.0.0.0 --port 8006
+python demo/live_voice_agent.py --host 0.0.0.0 --port 8006
 ```
 
 | Option | Default | Description |

@@ -38,7 +38,7 @@ flowchart LR
 
 ## Voice-Agent Pipeline
 
-`demo/demo_voice_agent.py` builds one Pipecat pipeline. Audio enters through the
+`demo/live_voice_agent.py` builds one Pipecat pipeline. Audio enters through the
 WebSocket input transport as browser microphone frames. The pipeline records the
 raw user audio, transcribes it, feeds the transcript into the LLM context, streams
 the LLM response into Qwen3-TTS, records the generated assistant audio, then sends
@@ -131,7 +131,7 @@ YYYYMMDDTHHMMSSZ_assistant_tts.wav
 Use `--record-dir` to override the destination:
 
 ```bash
-python demo/demo_voice_agent.py --port 8006 --host 0.0.0.0 \
+python demo/live_voice_agent.py --port 8006 --host 0.0.0.0 \
   --record-dir output/my_demo_recordings
 ```
 
