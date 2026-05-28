@@ -1,4 +1,4 @@
-"""Pipecat TTS service for fake-local and RTX 5090 megakernel modes."""
+"""Pipecat TTS service for RTX 5090 megakernel and HF reference modes."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import os
 from dataclasses import dataclass
 from typing import Any, AsyncGenerator, Optional
 
-from megakernel_adapter.fake_decoder import FakeMegakernelDecoder
 from megakernel_adapter.hf_reference import HFReferenceDecoder
 from megakernel_adapter.megakernel_decoder import MegakernelDecoder
 
@@ -88,14 +87,10 @@ def _mode() -> str:
     explicit = os.getenv("MEGAKERNEL_TTS_MODE")
     if explicit:
         return explicit.strip().lower()
-    use_fake = os.getenv("MEGAKERNEL_USE_FAKE", "1").strip().lower()
-    return "fake" if use_fake in {"1", "true", "yes", "on", "fake"} else "real"
+    return "real"
 
 
 def _build_decoder(mode: str, model_path: str, *, sample_rate: int = 24000, **kwargs):
-    if mode == "fake":
-        kwargs.pop("chunk_frames", None)
-        return FakeMegakernelDecoder(model_path, sample_rate=sample_rate, **kwargs)
     if mode in {"hf", "reference", "hf_reference"}:
         kwargs.pop("chunk_frames", None)
         kwargs.pop("realtime", None)
@@ -120,9 +115,8 @@ def _frame(frame_cls: Any, **kwargs):
 class MegakernelTTSService(TTSService):
     """Pipecat-compatible streaming TTS service.
 
-    Default mode is fake, so local server/Pipecat tests run without model
-    downloads, CUDA compilation, or paid GPU time. Use
-    ``MEGAKERNEL_TTS_MODE=real`` on the RTX 5090 host.
+    Default mode is real and targets the RTX 5090 megakernel decode path.
+    Use ``MEGAKERNEL_TTS_MODE=hf`` for HuggingFace reference behavior.
     """
 
     def __init__(

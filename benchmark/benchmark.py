@@ -1,4 +1,4 @@
-"""Benchmark fake-local or real RTX 5090 Qwen3-TTS streaming."""
+"""Benchmark HF-reference or real RTX 5090 Qwen3-TTS streaming."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ async def main_async(args):
 
 def main():
     parser = argparse.ArgumentParser(description="Qwen3-TTS megakernel benchmark")
-    parser.add_argument("--mode", default=None, help="fake, hf, or real")
+    parser.add_argument("--mode", default=None, help="hf or real")
     parser.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
     parser.add_argument(
         "--text",

@@ -1,4 +1,4 @@
-"""FastAPI routes for local fake and real megakernel TTS streaming."""
+"""FastAPI routes for megakernel and HF-reference TTS streaming."""
 
 from __future__ import annotations
 
@@ -18,9 +18,7 @@ router = APIRouter()
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
-    explicit = os.getenv("MEGAKERNEL_TTS_MODE")
-    use_fake = os.getenv("MEGAKERNEL_USE_FAKE", "1").strip().lower()
-    mode = explicit or ("fake" if use_fake in {"1", "true", "yes", "on", "fake"} else "real")
+    mode = os.getenv("MEGAKERNEL_TTS_MODE", "real")
     return HealthResponse(
         status="ok",
         mode=mode,
@@ -43,7 +41,7 @@ async def stream_alias(request: TTSRequest) -> StreamingResponse:
 
 @router.get("/stream")
 async def stream_get(
-    text: str = Query("Hello from the fake local TTS path."),
+    text: str = Query("Hello from the Qwen3-TTS megakernel path."),
 ) -> StreamingResponse:
     request = TTSRequest(text=text)
     return await tts_stream(request)
@@ -64,15 +62,12 @@ async def tts_wav(request: TTSRequest) -> Response:
 
 
 def _service_from_request(request: TTSRequest) -> MegakernelTTSService:
-    decoder_kwargs = {}
-    if (request.mode or os.getenv("MEGAKERNEL_TTS_MODE", "fake")).lower() == "fake":
-        decoder_kwargs.update(chunk_ms=request.chunk_ms, realtime=request.realtime)
-
     return MegakernelTTSService(
         model_path=request.model_path,
         mode=request.mode,
         sample_rate=request.sample_rate,
-        **decoder_kwargs,
+        chunk_ms=request.chunk_ms,
+        realtime=request.realtime,
     )
 
 
