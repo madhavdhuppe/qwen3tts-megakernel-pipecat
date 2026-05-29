@@ -18,7 +18,14 @@ class TTSRequest(BaseModel):
         default=None,
         description="Override decoder mode: hf or real.",
     )
-    sample_rate: int = 24000
-    chunk_ms: int = 80
     model_path: str = "Qwen/Qwen3-TTS-12Hz-0.6B-Base"
+    vocoder_path: Optional[str] = None
+    device: str = "cuda"
+    sample_rate: int = 24000
+    chunk_frames: int = 10
+    chunk_ms: int = 80
+    do_sample: bool = True
+    temperature: float = 0.9
+    top_k: int = 50
+    max_new_tokens: int = 2048
     realtime: bool = False

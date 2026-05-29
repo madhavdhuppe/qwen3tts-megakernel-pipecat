@@ -19,6 +19,10 @@ python scripts/verify_5090_env.py
 
 See [docs/architecture.md](docs/architecture.md) for the system architecture and
 voice-agent execution flow.
+See [docs/implementation_mental_model.md](docs/implementation_mental_model.md)
+for the decode/runtime boundary used by this implementation.
+See [docs/folder_structure.md](docs/folder_structure.md) for the repo ownership
+map.
 See [docs/options.md](docs/options.md) for all CLI flags, HTTP fields, and
 environment variables.
 See [docs/vast_ai_5090_runbook.md](docs/vast_ai_5090_runbook.md) for Vast.ai
@@ -80,10 +84,29 @@ python demo/live_voice_agent.py --port 8765
 
 Details: [docs/model_comparison.md](docs/model_comparison.md)
 
-## BENCH MARK
+## Benchmarking
+
+The benchmark keeps one initialized TTS service alive and reports cold startup
+separately from warm request latency:
+
+```bash
+python benchmark/benchmark.py --mode real --runs 5 --chunk-frames 10
+```
+
+Reported metrics:
+
+- `cold_init_ms`: model load, CUDA extension build, weight upload, and warmup.
+- `warm_ttfc_ms`: initialized request start to first PCM chunk.
+- `rtf`: generation wall time divided by emitted audio duration.
+- `talker_steps_per_s`: approximate talker decode steps per second.
+- `chunks`: number of streamed audio chunks.
+
+Previous cold-path measurement:
+
+```text
 run=5 mode=real ttfc_ms=5376.00 rtf=0.615 chunks=18 audio_s=13.60
---------------------------------------------------------
 avg_ttfc_ms=6316.11
 avg_rtf=0.684
 target_ttfc_ms=<60 assignment / <90 reference
 target_rtf=<0.1 assignment / <0.3 reference
+```

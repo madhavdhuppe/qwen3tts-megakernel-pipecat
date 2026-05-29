@@ -14,6 +14,7 @@ from pipecat_service.tts_service import MegakernelTTSService
 from server.schemas import HealthResponse, TTSRequest
 
 router = APIRouter()
+_SERVICE_CACHE: dict[tuple, MegakernelTTSService] = {}
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -61,11 +62,38 @@ async def tts_wav(request: TTSRequest) -> Response:
 
 
 def _service_from_request(request: TTSRequest) -> MegakernelTTSService:
-    return MegakernelTTSService(
-        model_path=request.model_path,
-        mode=request.mode,
-        sample_rate=request.sample_rate,
+    key = (
+        request.mode or os.getenv("MEGAKERNEL_TTS_MODE", "real"),
+        request.model_path,
+        request.vocoder_path,
+        request.device,
+        request.sample_rate,
+        request.chunk_frames,
+        request.chunk_ms,
+        request.do_sample,
+        request.temperature,
+        request.top_k,
+        request.max_new_tokens,
+        request.realtime,
     )
+    service = _SERVICE_CACHE.get(key)
+    if service is None:
+        service = MegakernelTTSService(
+            model_path=request.model_path,
+            mode=request.mode,
+            sample_rate=request.sample_rate,
+            vocoder_path=request.vocoder_path,
+            device=request.device,
+            chunk_frames=request.chunk_frames,
+            chunk_ms=request.chunk_ms,
+            do_sample=request.do_sample,
+            temperature=request.temperature,
+            top_k=request.top_k,
+            max_new_tokens=request.max_new_tokens,
+            realtime=request.realtime,
+        )
+        _SERVICE_CACHE[key] = service
+    return service
 
 
 async def _pcm_stream(

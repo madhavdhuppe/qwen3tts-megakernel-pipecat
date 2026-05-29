@@ -73,6 +73,10 @@ Endpoints:
 | `GET` | `/stream?text=...` | Simple streaming endpoint using default request settings. |
 | `POST` | `/tts/wav` | Returns a complete WAV file. |
 
+The HTTP server reuses `MegakernelTTSService` instances keyed by model, mode,
+device, chunking, and sampling settings so repeated requests measure warm
+latency instead of rebuilding the decoder.
+
 `POST` request body:
 
 | Field | Default | Description |
@@ -133,9 +137,25 @@ python benchmark/benchmark.py --mode real --runs 5 --chunk-frames 10
 | --- | --- | --- |
 | `--mode` | `real` | Decoder mode. |
 | `--model` | `Qwen/Qwen3-TTS-12Hz-0.6B-Base` | Qwen3-TTS model path or repo. |
+| `--device` | `cuda` | Torch device for real megakernel mode. |
 | `--text` | benchmark sentence | Text used for each run. |
 | `--runs` | `3` | Number of benchmark repetitions. Must be at least 1. |
 | `--chunk-frames` | `10` | Decoder chunk size in codec frames. Must be at least 1. |
+| `--no-sample` | off | Disable stochastic TTS sampling. |
+| `--temperature` | `0.9` | TTS sampling temperature. |
+| `--top-k` | `50` | TTS top-k sampling cutoff. |
+| `--max-new-tokens` | `2048` | Maximum TTS tokens to generate. |
+
+The benchmark reports:
+
+| Metric | Description |
+| --- | --- |
+| `cold_init_ms` | Decoder initialization, extension build/load, weight upload, and warmup. |
+| `warm_ttfc_ms` | Warm request start to first emitted PCM chunk. |
+| `rtf` | Wall-clock synthesis time divided by emitted audio duration. |
+| `talker_steps` | Final talker decoder position for the utterance. |
+| `talker_steps_per_s` | Approximate talker decode steps per wall-clock synthesis second. |
+| `chunks` | Number of streamed audio chunks emitted. |
 
 ## Round-Trip Validator
 

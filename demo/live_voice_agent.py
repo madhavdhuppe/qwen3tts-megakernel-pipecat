@@ -15,10 +15,6 @@ import sys
 import wave
 from datetime import datetime
 from pathlib import Path
-from pipecat.transports.websocket.server import (
-    WebsocketServerParams,
-    WebsocketServerTransport,
-)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -103,6 +99,10 @@ async def run_voice_pipeline(args):
     from pipecat.serializers.protobuf import ProtobufFrameSerializer
     from pipecat.services.deepgram.stt import DeepgramSTTService
     from pipecat.services.openai.llm import OpenAILLMService
+    from pipecat.transports.websocket.server import (
+        WebsocketServerParams,
+        WebsocketServerTransport,
+    )
 
     _configure_gpu()
 
@@ -135,8 +135,12 @@ async def run_voice_pipeline(args):
     tts = MegakernelTTSService(
         model_path="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
         mode="real",
-        device="cuda",
+       device="cuda",
         chunk_frames=10,
+        do_sample=not args.no_sample,
+        temperature=args.temperature,
+        top_k=args.top_k,
+        max_new_tokens=args.max_new_tokens,
     )
     tts.decoder.initialize()
     logger.info("Megakernel decoder initialized on GPU.")
@@ -173,8 +177,8 @@ async def run_voice_pipeline(args):
         params=WebsocketServerParams(
             audio_out_enabled=True,
             audio_in_enabled=True,
-            audio_in_sample_rate=16000,
-            audio_out_sample_rate=24000,
+            audio_in_sample_rate=args.audio_in_sample_rate,
+            audio_out_sample_rate=args.audio_out_sample_rate,
             serializer=ProtobufFrameSerializer(),
         ),
     )
@@ -228,6 +232,16 @@ def main():
     parser = argparse.ArgumentParser(description="Pipecat voice agent with megakernel TTS")
     parser.add_argument("--host", default="0.0.0.0", help="WebSocket host")
     parser.add_argument("--port", type=int, default=8765, help="WebSocket port")
+    parser.add_argument("--model", default="Qwen/Qwen3-TTS-12Hz-0.6B-Base")
+    parser.add_argument("--device", default="cuda")
+    parser.add_argument("--chunk-frames", type=int, default=10)
+    parser.add_argument("--llm-model", default="gpt-4o-mini")
+    parser.add_argument("--audio-in-sample-rate", type=int, default=16000)
+    parser.add_argument("--audio-out-sample-rate", type=int, default=24000)
+    parser.add_argument("--no-sample", action="store_true", help="Disable stochastic TTS sampling")
+    parser.add_argument("--temperature", type=float, default=0.9)
+    parser.add_argument("--top-k", type=int, default=50)
+    parser.add_argument("--max-new-tokens", type=int, default=2048)
     parser.add_argument(
         "--record-dir",
         default="output/voice_agent_recordings",
